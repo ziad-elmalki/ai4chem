@@ -35,7 +35,7 @@ This is a repo for the Artificial Intelligence for Chemistry class
 
 > TODO show in a very small amount of space the **MOST** useful thing your package can do.
 > Make it as short as possible! You have an entire set of docs for later.
-This is a Test 
+This is a Test with collene 
 
 ### Command Line Interface
 
