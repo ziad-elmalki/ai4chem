@@ -29,7 +29,7 @@
         <img src="https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg" alt="Contributor Covenant"/></a>
 </p>
 
-This is a repo for the Artificial Intelligence for Chemistry class
+This is a repo for the Artificial Intelligence for Chemistry class, This is a test 
 
 ## 💪 Getting Started
 
