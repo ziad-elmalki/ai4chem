@@ -7,7 +7,7 @@ import urllib.request
 url = "http://cycpeptmpdb.com/static//download/peptides/CycPeptMPDB_Peptide_All.csv"
 
 # Destination directory
-destination_dir = "/Users/ziadelmalki/Desktop/ai4chem/docs/data"
+destination_dir = "../../docs/data"
 
 # Create the destination directory if it doesn't exist
 os.makedirs(destination_dir, exist_ok=True)
