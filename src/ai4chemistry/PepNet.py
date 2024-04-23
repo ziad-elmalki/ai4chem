@@ -16,7 +16,7 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from sklearn.model_selection import train_test_split
 
 from torchvision import transforms
-
+import h5py
 np.random.seed(69)
 
 
@@ -75,6 +75,25 @@ def train(dataloader, model, loss_fn, optimizer):
     return running_loss
 
 # Define the test function
+# def test(dataloader, model, loss_fn):
+#     '''
+#     This function implements the validation/test loop. It iterates over the test
+#     dataset to check if the model performance is improving.
+#     '''
+#     size = len(dataloader.dataset)
+#     num_batches = len(dataloader)
+#     model.eval() # Set the model to evaluation mode
+#     test_loss, correct = 0, 0
+#     with torch.no_grad(): # Do not track gradients while evaluating (faster)
+#         for X, y in dataloader:
+#             pred = model(X)
+#             test_loss += loss_fn(pred, y).item() # Compute CE loss on the batch
+#             correct += (pred.argmax(1) == y).type(torch.float).sum().item() # Compute classification error
+#     test_loss /= num_batches
+#     correct /= size
+#     print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+#     return test_loss
+
 def test(dataloader, model, loss_fn):
     '''
     This function implements the validation/test loop. It iterates over the test
@@ -83,35 +102,57 @@ def test(dataloader, model, loss_fn):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
     model.eval() # Set the model to evaluation mode
-    test_loss, correct = 0, 0
+    test_loss = 0
+    correct = 0
     with torch.no_grad(): # Do not track gradients while evaluating (faster)
         for X, y in dataloader:
+            # Forward pass
             pred = model(X)
-            test_loss += loss_fn(pred, y).item() # Compute CE loss on the batch
-            correct += (pred.argmax(1) == y).type(torch.float).sum().item() # Compute classification error
+            pred = pred.squeeze(1)
+            #print(pred,y)
+            # Compute loss
+            batch_loss = loss_fn(pred, y)
+            test_loss += batch_loss.item()
+            for pred_i, y_i in zip(pred, y):
+                if torch.abs(pred_i - y_i) < 0.1 * torch.abs(y_i):
+                    correct += 1
+
+    # Average loss over all batches
     test_loss /= num_batches
     correct /= size
+    # Print test loss
+    
     print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+
     return test_loss
 
-if __name__ == "__main__":
-    # Load the data from the Pickle file
-    PepNet_data = pd.read_pickle('../../docs/data/PepNet_data.pkl')
 
-    for i in range(len(PepNet_data)):
-        # Get the image data
-        images = np.array(PepNet_data.loc[i, 'Image'])
-        # Get the permeability value
-        permeability = np.array(PepNet_data.loc[i, 'Permeability'])
+if __name__ == "__main__":
+    
+    # Load the data from the h5py file
+    h5file = '../../docs/data/PepNet_data.h5'
+
+    with h5py.File(h5file, 'r') as F:
+        #print(type(F['images'][0]))
+        images = np.array(F['images'])
+        #print(type(images[0]))
+        labels = np.array(F['permeability'])
+
+    #Verify the data
+    #plt.imshow(images[0])
+    #plt.show()
+    #print(labels[0])
     
     # create numpy arrays for labels and data
     data = torch.from_numpy(images)
-    labels = torch.from_numpy(permeability)
+    #print(data.shape)
+    labels = torch.from_numpy(labels)
+    #print(labels.shape)
+    
 
     # we change the data type and permute the color channel axis from place 3 to 1, to conform with pytorch defaults.
     data = data.type(torch.float32).permute(0,3,1,2)  # leave this as is
-    labels = labels.type(torch.LongTensor)            # leave this as is
-
+    labels = labels.type(torch.float32)            # leave this as is
     print(data.shape, labels.shape)
 
     # continue with computing the channel means and std's after cropping on a subset of the data
@@ -129,6 +170,8 @@ if __name__ == "__main__":
     # Compute mean and std for each channel
     mean = torch.mean(subset_cropped_images.float(), dim=(0, 2, 3))
     std = torch.std(subset_cropped_images.float(), dim=(0, 2, 3))
+    #mean = torch.mean(subset_images.float(), dim=(0, 2, 3))
+    #std = torch.std(subset_images.float(), dim=(0, 2, 3))
 
     print("Computed Mean:", mean)
     print("Computed Std:", std)
@@ -162,23 +205,23 @@ if __name__ == "__main__":
     test_main_dataloader = DataLoader(Test_main_dataset, batch_size=batch_size)
 
     # Create the model First draft of the model
-    model = nn.Sequential(
-        nn.Conv2d(3, 6, kernel_size=5),
-        nn.ReLU(),
-        nn.MaxPool2d(2, 2),
+    # model = nn.Sequential(
+    #     nn.Conv2d(3, 6, kernel_size=5),
+    #     nn.ReLU(),
+    #     nn.MaxPool2d(2, 2),
 
-        nn.Conv2d(6, 16, kernel_size=5),
-        nn.ReLU(),
-        nn.MaxPool2d(2, 2),
+    #     nn.Conv2d(6, 16, kernel_size=5),
+    #     nn.ReLU(),
+    #     nn.MaxPool2d(2, 2),
 
-        nn.Flatten(),
+    #     nn.Flatten(),
 
-        nn.Linear(16*10*10, 120),
-        nn.ReLU(),
-        nn.Linear(120, 84),
-        nn.ReLU(),
-        nn.Linear(84, 10)
-    )
+    #     nn.Linear(16*10*10, 120),
+    #     nn.ReLU(),
+    #     nn.Linear(120, 84),
+    #     nn.ReLU(),
+    #     nn.Linear(84, 10)
+    # )
 
     # Define the model architecture
     cnn_model = nn.Sequential(
@@ -208,14 +251,15 @@ if __name__ == "__main__":
     )
 
     # Define the loss function and the optimizer
-    loss_fn = nn.CrossEntropyLoss()
+    #loss_fn = nn.CrossEntropyLoss()
+    loss_fn = nn.MSELoss()
     learning_rate_full = 2e-3
     optimizer_full_cnn = torch.optim.Adam(cnn_model.parameters(), lr=learning_rate_full) # Pass model parameters to optimizer
 
     # Train the model
     Losses_train_convo = []
     Losses_test_convo = []
-    epochs = 50
+    epochs = 10
     for t in range(epochs):
         print(f"Epoch {t+1}\n")
         Losses_train_convo.append(train(train_main_dataloader, cnn_model, loss_fn, optimizer_full_cnn))
@@ -234,17 +278,29 @@ if __name__ == "__main__":
 
     correct = 0
     total = 0
-
+    mse = 0
+    threshold = 0.1 # Threshold for the prediction to be correct
     with torch.no_grad():
 
         for data in test_main_dataloader:
 
             images, labels = data
-
-            outputs = cnn_model(images)
-
-            _, predicted = torch.max(outputs.data, 1)
+            
+            predicted = cnn_model(images)
+            predicted = predicted.squeeze(1)
+    
             total += labels.size(0)
-            correct += (predicted == labels).sum().item()
+    
+            for pred_i, y_i in zip(predicted, labels):
+                if torch.abs(pred_i - y_i) < threshold * torch.abs(y_i):
+                    correct += 1
 
-    print(f'Test accuracy: {100 * correct / total}')
+            batch_mse = torch.mean((predicted - labels)**2).item()
+            mse += batch_mse
+
+        mse /= len(test_main_dataloader)
+        accuracy = 100 * correct / total
+
+    #print(f'Test accuracy: {100 * correct / total}')
+    print(f'Mean Squared Error (MSE): {mse:.6f}')
+    print(f'Accuracy within {threshold * 100}% error: {accuracy:.2f}%')
