@@ -20,13 +20,13 @@ if __name__ == '__main__':
     nfiles = len(PepNet_data)
     IMG_WIDTH = PepNet_data['Image'][0].size[0]
     IMG_HEIGHT = PepNet_data['Image'][0].size[1]
-
+    
     # Create an h5 file
     h5file = '../../docs/data/PepNet_data.h5'
 
     with h5py.File(h5file, 'w') as h5f:
         # Create the image dataset
-        img_ds = h5f.create_dataset('images', shape=(nfiles, IMG_WIDTH, IMG_HEIGHT, 3), dtype=int)
+        img_ds = h5f.create_dataset('images', shape=(nfiles, IMG_WIDTH, IMG_HEIGHT, 3), dtype='uint8') #dtype used to be int
         
         # Save the images to the dataset
         for i in range(nfiles):
