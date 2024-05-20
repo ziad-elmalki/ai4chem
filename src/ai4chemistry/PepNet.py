@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from PIL import Image
-import pickle 
 from rdkit import Chem
 from rdkit.Chem import Draw
 
@@ -40,9 +39,12 @@ class MyDataset(Dataset):
         y = self.target[index]
         if self.target_transform:
             y = self.target_transform(y)
+        
+    
 
         return x, y
     
+
 # Define the training function
 def train(dataloader, model, loss_fn, optimizer):
     '''
@@ -65,7 +67,7 @@ def train(dataloader, model, loss_fn, optimizer):
         optimizer.step() # Do a gradient descent step and adjust parameters
         optimizer.zero_grad() # Reset the gradients of model parameters to zero (gradients by default add up)
 
-        if batch % 200 == 0:
+        if batch % 50 == 0:
             loss, current = loss.item(), (batch + 1) * len(X)
             
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
@@ -130,7 +132,7 @@ def test(dataloader, model, loss_fn):
 if __name__ == "__main__":
     
     # Load the data from the h5py file
-    h5file = '../../docs/data/PepNet_data.h5'
+    h5file = '../../docs/data/Augmented_PepNet_data.h5'
 
     with h5py.File(h5file, 'r') as F:
         #print(type(F['images'][0]))
@@ -145,9 +147,16 @@ if __name__ == "__main__":
     
     # create numpy arrays for labels and data
     data = torch.from_numpy(images)
-    #print(data.shape)
+    print(data.shape)
     labels = torch.from_numpy(labels)
-    #print(labels.shape)
+    
+    # Compute the mean and std of the labels
+    labels_mean = torch.mean(labels)
+    labels_std = torch.std(labels)
+
+    # Standardize the labels
+    labels = (labels - labels_mean) / labels_std
+    print(labels.shape)
     
 
     # we change the data type and permute the color channel axis from place 3 to 1, to conform with pytorch defaults.
@@ -158,7 +167,7 @@ if __name__ == "__main__":
     # continue with computing the channel means and std's after cropping on a subset of the data
 
     # Compute mean and std from a random crop
-    random_crop_transform = transforms.RandomCrop(size=(48, 48))
+    random_crop_transform = transforms.RandomCrop(size=(256, 256))
 
     # Select a random subset of images for computing mean and std
     subset_indices = torch.randint(0, len(data), (1000,))
@@ -179,7 +188,8 @@ if __name__ == "__main__":
 
     # define the composed transform
     composed_transform = transforms.Compose([
-        transforms.RandomCrop(size=(48, 48)),
+        #transforms.RandomCrop(size=(48, 48)),
+        transforms.RandomCrop(size=(256, 256)),
         transforms.Normalize(mean=mean.tolist(), std=std.tolist())
     ])
 
@@ -191,9 +201,11 @@ if __name__ == "__main__":
     print("Transformed Mean:", torch.mean(Test_Normalization_data.float(), dim=(0, 2, 3)))
     print("Transformed Std:", torch.std(Test_Normalization_data.float(), dim=(0, 2, 3)))
 
-    train_main_idx, test_main_idx = train_test_split(np.arange(labels.shape[0]), train_size=5880)
+    # Split the data into training and test sets
+    train_main_idx, test_main_idx = train_test_split(np.arange(labels.shape[0]), train_size=12000)
     train_main_images, train_main_labels, test_main_images, test_main_labels = data[train_main_idx], labels[train_main_idx], data[test_main_idx], labels[test_main_idx]
 
+    # Create the datasets 
     Train_main_dataset = MyDataset(train_main_images, train_main_labels, transform=composed_transform)
     Test_main_dataset = MyDataset(test_main_images,test_main_labels, transform=composed_transform)
 
@@ -204,62 +216,69 @@ if __name__ == "__main__":
     train_main_dataloader = DataLoader(Train_main_dataset, batch_size=batch_size, shuffle=True)
     test_main_dataloader = DataLoader(Test_main_dataset, batch_size=batch_size)
 
-    # Create the model First draft of the model
-    # model = nn.Sequential(
-    #     nn.Conv2d(3, 6, kernel_size=5),
-    #     nn.ReLU(),
-    #     nn.MaxPool2d(2, 2),
+    # Create the First draft of the model
+    cnn_model = nn.Sequential(
+    nn.Conv2d(3, 6, kernel_size=5),    # Input: 256x256 -> Output: 252x252
+    nn.ReLU(),                        
+    nn.MaxPool2d(2, 2),               # Output: 252x252 -> 126x126
 
-    #     nn.Conv2d(6, 16, kernel_size=5),
-    #     nn.ReLU(),
-    #     nn.MaxPool2d(2, 2),
+    nn.Conv2d(6, 16, kernel_size=5),   # Output: 126x126 -> 122x122
+    nn.ReLU(),                        
+    nn.MaxPool2d(2, 2),               # Output: 122x122 -> 61x61
 
-    #     nn.Flatten(),
+    nn.Flatten(),                     # Flatten: 16*61*61
 
-    #     nn.Linear(16*10*10, 120),
-    #     nn.ReLU(),
-    #     nn.Linear(120, 84),
-    #     nn.ReLU(),
-    #     nn.Linear(84, 10)
-    # )
+    nn.Linear(16*61*61, 120),         # 16*61*61 = 59536
+    nn.ReLU(),
+    nn.Linear(120, 84),
+    nn.ReLU(),
+    nn.Linear(84, 1)                  # Single output for regression
+    )
+    
 
     # Define the model architecture
-    cnn_model = nn.Sequential(
-        nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1),
-        nn.ReLU(),
-        nn.MaxPool2d(kernel_size=2, stride=2),
+    #cnn_model = nn.Sequential(
+    #nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1),
+    #nn.ReLU(),
+    #nn.MaxPool2d(kernel_size=2, stride=2),
 
-        nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1),
-        nn.ReLU(),
-        nn.MaxPool2d(kernel_size=2, stride=2),
+    #nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1),
+    #nn.ReLU(),
+    #nn.MaxPool2d(kernel_size=2, stride=2),
 
-        nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
-        nn.ReLU(),
-        nn.MaxPool2d(kernel_size=2, stride=2),
+    #nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+    #nn.ReLU(),
+    #nn.MaxPool2d(kernel_size=2, stride=2),
 
-        nn.Flatten(),
+    #nn.Flatten(),
 
-        nn.Linear(64*6*6, 256),
-        nn.ReLU(),
-        nn.Dropout(0.5),
+    #nn.Linear(64*6*6, 256),
+    #nn.ReLU(),
+    #nn.Dropout(0.5),
 
-        nn.Linear(256, 128),
-        nn.ReLU(),
-        nn.Dropout(0.5),
+    #nn.Linear(256, 128),
+    #nn.ReLU(),
+    #nn.Dropout(0.5),
 
-        nn.Linear(128, 1)
-    )
+    #nn.Linear(128, 64),
+    #nn.ReLU(),
+
+    #nn.Linear(64, 32),
+    #nn.ReLU(),
+    #nn.Dropout(0.5),
+
+    #nn.Linear(32, 1)
+    #)
 
     # Define the loss function and the optimizer
-    #loss_fn = nn.CrossEntropyLoss()
     loss_fn = nn.MSELoss()
-    learning_rate_full = 2e-3
+    learning_rate_full = 1e-3
     optimizer_full_cnn = torch.optim.Adam(cnn_model.parameters(), lr=learning_rate_full) # Pass model parameters to optimizer
 
     # Train the model
     Losses_train_convo = []
     Losses_test_convo = []
-    epochs = 10
+    epochs = 80
     for t in range(epochs):
         print(f"Epoch {t+1}\n")
         Losses_train_convo.append(train(train_main_dataloader, cnn_model, loss_fn, optimizer_full_cnn))
@@ -275,6 +294,7 @@ if __name__ == "__main__":
     plt.xlabel("Epochs")
     plt.ylabel("Loss")
     plt.title("ConvoNet: Train and Test Loss as a function of epochs")
+    plt.show()
 
     correct = 0
     total = 0
@@ -288,6 +308,8 @@ if __name__ == "__main__":
             
             predicted = cnn_model(images)
             predicted = predicted.squeeze(1)
+            print("Predicted values : ", predicted*labels_std + labels_mean)
+            print("Actual values : ", labels*labels_std + labels_mean)
     
             total += labels.size(0)
     
