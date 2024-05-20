@@ -11,7 +11,6 @@ from torch import nn
 from torch.utils.data import Dataset, DataLoader
 from torch.optim import Adam
 
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from sklearn.model_selection import train_test_split
 
 from torchvision import transforms
@@ -141,22 +140,24 @@ if __name__ == "__main__":
         labels = np.array(F['permeability'])
 
     #Verify the data
+    # Verify the data
     #plt.imshow(images[0])
     #plt.show()
     #print(labels[0])
+    
     
     # create numpy arrays for labels and data
     data = torch.from_numpy(images)
     print(data.shape)
     labels = torch.from_numpy(labels)
-    
+    print(labels.shape)
+
     # Compute the mean and std of the labels
-    labels_mean = torch.mean(labels)
-    labels_std = torch.std(labels)
+    #labels_mean = torch.mean(labels)
+    #labels_std = torch.std(labels)
 
     # Standardize the labels
-    labels = (labels - labels_mean) / labels_std
-    print(labels.shape)
+    #labels = (labels - labels_mean) / labels_std
     
 
     # we change the data type and permute the color channel axis from place 3 to 1, to conform with pytorch defaults.
@@ -167,7 +168,7 @@ if __name__ == "__main__":
     # continue with computing the channel means and std's after cropping on a subset of the data
 
     # Compute mean and std from a random crop
-    random_crop_transform = transforms.RandomCrop(size=(256, 256))
+    random_crop_transform = transforms.RandomCrop(size=(300, 300))
 
     # Select a random subset of images for computing mean and std
     subset_indices = torch.randint(0, len(data), (1000,))
@@ -189,7 +190,7 @@ if __name__ == "__main__":
     # define the composed transform
     composed_transform = transforms.Compose([
         #transforms.RandomCrop(size=(48, 48)),
-        transforms.RandomCrop(size=(256, 256)),
+        transforms.RandomCrop(size=(300, 300)),
         transforms.Normalize(mean=mean.tolist(), std=std.tolist())
     ])
 
@@ -217,25 +218,68 @@ if __name__ == "__main__":
     test_main_dataloader = DataLoader(Test_main_dataset, batch_size=batch_size)
 
     # Create the First draft of the model
+    #cnn_model = nn.Sequential(
+    #nn.Conv2d(3, 6, kernel_size=5),    # Input: 300x300 -> Output: 296x296
+    #nn.ReLU(),
+    #nn.MaxPool2d(2, 2),               # Output: 296x296 -> 148x148
+
+    #nn.Conv2d(6, 16, kernel_size=5),   # Output: 148x148 -> 144x144
+    #nn.ReLU(),
+    #nn.MaxPool2d(2, 2),               # Output: 144x144 -> 72x72
+
+    #nn.Flatten(),                     # Flatten: 16*72*72 = 82944
+
+    #nn.Linear(16*72*72, 120),         # 16*72*72 = 82944
+    #nn.ReLU(),
+    #nn.Linear(120, 84),
+    #nn.ReLU(),
+    #nn.Linear(84, 1)                  # Single output for regression
+    #)
+
+    import torch.nn as nn
+
     cnn_model = nn.Sequential(
-    nn.Conv2d(3, 6, kernel_size=5),    # Input: 256x256 -> Output: 252x252
-    nn.ReLU(),                        
-    nn.MaxPool2d(2, 2),               # Output: 252x252 -> 126x126
-
-    nn.Conv2d(6, 16, kernel_size=5),   # Output: 126x126 -> 122x122
-    nn.ReLU(),                        
-    nn.MaxPool2d(2, 2),               # Output: 122x122 -> 61x61
-
-    nn.Flatten(),                     # Flatten: 16*61*61
-
-    nn.Linear(16*61*61, 120),         # 16*61*61 = 59536
+    nn.Conv2d(3, 32, kernel_size=3, padding=1),  # Output: 300x300 -> 300x300
+    nn.BatchNorm2d(32),
     nn.ReLU(),
-    nn.Linear(120, 84),
+    nn.MaxPool2d(2, 2),                         # Output: 300x300 -> 150x150
+
+    nn.Conv2d(32, 64, kernel_size=3, padding=1), # Output: 150x150 -> 150x150
+    nn.BatchNorm2d(64),
     nn.ReLU(),
-    nn.Linear(84, 1)                  # Single output for regression
+    nn.MaxPool2d(2, 2),                         # Output: 150x150 -> 75x75
+
+    nn.Conv2d(64, 128, kernel_size=3, padding=1), # Output: 75x75 -> 75x75
+    nn.BatchNorm2d(128),
+    nn.ReLU(),
+    nn.MaxPool2d(2, 2),                          # Output: 75x75 -> 37x37
+
+    nn.Conv2d(128, 256, kernel_size=3, padding=1), # Output: 37x37 -> 37x37
+    nn.BatchNorm2d(256),
+    nn.ReLU(),
+    nn.MaxPool2d(2, 2),                          # Output: 37x37 -> 18x18
+
+    nn.Flatten(),                                # Flatten: 256*18*18 = 82944
+
+    nn.Linear(256*18*18, 512),
+    nn.BatchNorm1d(512),
+    nn.ReLU(),
+    nn.Dropout(0.5),
+
+    nn.Linear(512, 256),
+    nn.BatchNorm1d(256),
+    nn.ReLU(),
+    nn.Dropout(0.5),
+
+    nn.Linear(256, 84),
+    nn.BatchNorm1d(84),
+    nn.ReLU(),
+    nn.Dropout(0.5),
+
+    nn.Linear(84, 1)                             # Single output for regression
     )
+   
     
-
     # Define the model architecture
     #cnn_model = nn.Sequential(
     #nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1),
@@ -278,7 +322,7 @@ if __name__ == "__main__":
     # Train the model
     Losses_train_convo = []
     Losses_test_convo = []
-    epochs = 80
+    epochs = 30
     for t in range(epochs):
         print(f"Epoch {t+1}\n")
         Losses_train_convo.append(train(train_main_dataloader, cnn_model, loss_fn, optimizer_full_cnn))
@@ -293,7 +337,7 @@ if __name__ == "__main__":
     plt.legend(["Train Loss","Test Loss"])
     plt.xlabel("Epochs")
     plt.ylabel("Loss")
-    plt.title("ConvoNet: Train and Test Loss as a function of epochs")
+    plt.title("PepNet: Train and Test Loss as a function of epochs")
     plt.show()
 
     correct = 0
@@ -308,8 +352,8 @@ if __name__ == "__main__":
             
             predicted = cnn_model(images)
             predicted = predicted.squeeze(1)
-            print("Predicted values : ", predicted*labels_std + labels_mean)
-            print("Actual values : ", labels*labels_std + labels_mean)
+            print("Predicted values : ", predicted)
+            print("Actual values : ", labels)
     
             total += labels.size(0)
     
