@@ -5,7 +5,7 @@ pandarallel.initialize(progress_bar=True)
 tqdm.pandas()
 
 
-df = pd.read_csv('../../../../docs/data/cycpeptdb_clean.csv')
+df = pd.read_csv('../../../../docs/data/cycpeptdb.csv')
 
 #Data cleaning operations
 
