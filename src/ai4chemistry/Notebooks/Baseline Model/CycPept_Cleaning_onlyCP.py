@@ -22,7 +22,7 @@ columns_to_keep = ['SMILES', 'PC1', 'PC2', 'Permeability']
 df_cleaned = df_cleaned[columns_to_keep]
 
 # Save the resulting DataFrame to a new CSV file
-df_cleaned.to_csv('../../../../docs/data/cycpeptdb_clean_onlyPC.csv', index=False)
+df_cleaned.to_csv('../../../../docs/data/cycpeptdb_clean_onlyCP.csv', index=False)
 
 #Print message when done
 print('Data cleaning operations completed successfully!')
