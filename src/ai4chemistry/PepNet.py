@@ -23,7 +23,7 @@ np.random.seed(69)
 class MyDataset(Dataset):
     def __init__(self, data, target, transform=None, target_transform=None):
         self.data = data
-        self.target = target
+        self.target = target.view(-1, 1)
         self.transform = transform
         self.target_transform = target_transform
 
@@ -131,7 +131,7 @@ def test(dataloader, model, loss_fn):
 if __name__ == "__main__":
     
     # Load the data from the h5py file
-    h5file = '../../docs/data/Augmented_PepNet_data.h5'
+    h5file = '../../docs/data/PepNet_data.h5'
 
     with h5py.File(h5file, 'r') as F:
         #print(type(F['images'][0]))
@@ -203,7 +203,7 @@ if __name__ == "__main__":
     print("Transformed Std:", torch.std(Test_Normalization_data.float(), dim=(0, 2, 3)))
 
     # Split the data into training and test sets
-    train_main_idx, test_main_idx = train_test_split(np.arange(labels.shape[0]), train_size=12000)
+    train_main_idx, test_main_idx = train_test_split(np.arange(labels.shape[0]), train_size=5000)
     train_main_images, train_main_labels, test_main_images, test_main_labels = data[train_main_idx], labels[train_main_idx], data[test_main_idx], labels[test_main_idx]
 
     # Create the datasets 
@@ -236,50 +236,72 @@ if __name__ == "__main__":
     #nn.Linear(84, 1)                  # Single output for regression
     #)
 
-    import torch.nn as nn
+    #cnn_model = nn.Sequential(
+    #nn.Conv2d(3, 32, kernel_size=3, padding=1),  # Output: 300x300 -> 300x300
+    #nn.BatchNorm2d(32),
+    #nn.ReLU(),
+    #nn.MaxPool2d(2, 2),                         # Output: 300x300 -> 150x150
 
-    cnn_model = nn.Sequential(
-    nn.Conv2d(3, 32, kernel_size=3, padding=1),  # Output: 300x300 -> 300x300
-    nn.BatchNorm2d(32),
-    nn.ReLU(),
-    nn.MaxPool2d(2, 2),                         # Output: 300x300 -> 150x150
+    #nn.BatchNorm2d(64),
+    #nn.Conv2d(32, 64, kernel_size=3, padding=1), # Output: 150x150 -> 150x150
+    #nn.ReLU(),
+    #nn.MaxPool2d(2, 2),                         # Output: 150x150 -> 75x75
 
-    nn.Conv2d(32, 64, kernel_size=3, padding=1), # Output: 150x150 -> 150x150
-    nn.BatchNorm2d(64),
-    nn.ReLU(),
-    nn.MaxPool2d(2, 2),                         # Output: 150x150 -> 75x75
+    #nn.Conv2d(64, 128, kernel_size=3, padding=1), # Output: 75x75 -> 75x75
+    #nn.BatchNorm2d(128),
+    #nn.ReLU(),
+    #nn.MaxPool2d(2, 2),                          # Output: 75x75 -> 37x37
 
-    nn.Conv2d(64, 128, kernel_size=3, padding=1), # Output: 75x75 -> 75x75
-    nn.BatchNorm2d(128),
-    nn.ReLU(),
-    nn.MaxPool2d(2, 2),                          # Output: 75x75 -> 37x37
+    #nn.Conv2d(128, 256, kernel_size=3, padding=1), # Output: 37x37 -> 37x37
+    #nn.BatchNorm2d(256),
+    #nn.ReLU(),
+    #nn.MaxPool2d(2, 2),                          # Output: 37x37 -> 18x18
 
-    nn.Conv2d(128, 256, kernel_size=3, padding=1), # Output: 37x37 -> 37x37
-    nn.BatchNorm2d(256),
-    nn.ReLU(),
-    nn.MaxPool2d(2, 2),                          # Output: 37x37 -> 18x18
+    #nn.Flatten(),                                # Flatten: 256*18*18 = 82944
 
-    nn.Flatten(),                                # Flatten: 256*18*18 = 82944
+    #nn.Linear(256*18*18, 512),
+    #nn.BatchNorm1d(512),
+    #nn.ReLU(),
+    #nn.Dropout(0.5),
 
-    nn.Linear(256*18*18, 512),
-    nn.BatchNorm1d(512),
-    nn.ReLU(),
-    nn.Dropout(0.5),
+    #nn.Linear(512, 256),
+    #nn.BatchNorm1d(256),
+    #nn.ReLU(),
+    #nn.Dropout(0.5),
 
-    nn.Linear(512, 256),
-    nn.BatchNorm1d(256),
-    nn.ReLU(),
-    nn.Dropout(0.5),
+    #nn.Linear(256, 84),
+    #nn.BatchNorm1d(84),
+    #nn.ReLU(),
+    #nn.Dropout(0.5),
 
-    nn.Linear(256, 84),
-    nn.BatchNorm1d(84),
-    nn.ReLU(),
-    nn.Dropout(0.5),
-
-    nn.Linear(84, 1)                             # Single output for regression
-    )
+    #nn.Linear(84, 1)                             # Single output for regression
+    #)
    
+    cnn_model = nn.Sequential( 
+    nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3),
+    nn.ReLU(inplace=True),
+    nn.MaxPool2d(kernel_size=3, stride=2),
+    nn.Conv2d(64, 192, kernel_size=5, padding=2),
+    nn.ReLU(inplace=True),
+    nn.MaxPool2d(kernel_size=3, stride=2),
+    nn.Conv2d(192, 384, kernel_size=3, padding=1),
+    nn.ReLU(inplace=True),
+    nn.Conv2d(384, 256, kernel_size=3, padding=1),
+    nn.ReLU(inplace=True),
+    nn.Conv2d(256, 256, kernel_size=3, padding=1),
+    nn.ReLU(inplace=True),
+    nn.MaxPool2d(kernel_size=3, stride=2),
+
+    nn.Flatten(),
     
+    nn.Linear(73984, 4096), #256 * 6 * 6
+    nn.ReLU(inplace=True),
+    nn.Dropout(0.5),
+    nn.Linear(4096, 4096),
+    nn.ReLU(inplace=True),
+    nn.Dropout(0.5),
+    nn.Linear(4096, 1)
+    )
     # Define the model architecture
     #cnn_model = nn.Sequential(
     #nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1),
