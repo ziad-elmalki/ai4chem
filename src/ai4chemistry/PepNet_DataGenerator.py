@@ -8,8 +8,12 @@ if __name__ == '__main__':
     # Read the cycpepdb_clean as a dataframe
     df = pd.read_csv('../../docs/data/cycpeptdb_clean.csv')
 
-    PepNet_data = pd.DataFrame(columns=['Permeability', 'Image'])
+    # Drop rows where permeability is -10
+    df = df[df['Permeability'] != -10]
+    df.reset_index(drop=True, inplace=True)
 
+    PepNet_data = pd.DataFrame(columns=['Permeability', 'Image'])
+    
     # Create a new column 'images' to store the RDKit images of the peptides
     PepNet_data['Image'] = df['SMILES'].apply(lambda x: Draw.MolToImage(Chem.MolFromSmiles(x)))
 
@@ -37,3 +41,5 @@ if __name__ == '__main__':
         
         # Save the permeability values to the dataset
         perm_ds[:] = PepNet_data['Permeability']
+    
+    print('PepNet Data saved to', h5file)

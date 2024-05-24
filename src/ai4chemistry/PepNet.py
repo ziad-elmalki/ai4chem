@@ -15,15 +15,17 @@ from sklearn.model_selection import train_test_split
 
 from torchvision import transforms
 import h5py
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+print("GPU available: ", torch.cuda.is_available())
+
 np.random.seed(69)
 
-
-#Define functions 
-
+# Define functions 
 class MyDataset(Dataset):
     def __init__(self, data, target, transform=None, target_transform=None):
         self.data = data
-        self.target = target.view(-1, 1)
+        self.target = target
         self.transform = transform
         self.target_transform = target_transform
 
@@ -39,78 +41,48 @@ class MyDataset(Dataset):
         if self.target_transform:
             y = self.target_transform(y)
         
-    
-
         return x, y
     
 
 # Define the training function
 def train(dataloader, model, loss_fn, optimizer):
-    '''
-    This function implements the train loop. It iterates over the training dataset
-    and try to converge to optimal parameters.
-    '''
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
     running_loss = 0
-    model.train() # Set the model to training mode
+    model.train()  # Set the model to training mode
     for batch, (X, y) in enumerate(dataloader):
-        
+        X, y = X.to(device), y.to(device)
         # Compute prediction and loss
-        pred = model(X) # Pass the data to the model to execute the model forward
+        pred = model(X)  # Pass the data to the model to execute the model forward
         loss = loss_fn(pred, y)
         running_loss += loss.item()
 
         # Backpropagation
-        loss.backward() # Compute gradients of the loss w.r.t parameters (backward pass)
-        optimizer.step() # Do a gradient descent step and adjust parameters
-        optimizer.zero_grad() # Reset the gradients of model parameters to zero (gradients by default add up)
+        loss.backward()  # Compute gradients of the loss w.r.t parameters (backward pass)
+        optimizer.step()  # Do a gradient descent step and adjust parameters
+        optimizer.zero_grad()  # Reset the gradients of model parameters to zero (gradients by default add up)
 
         if batch % 50 == 0:
             loss, current = loss.item(), (batch + 1) * len(X)
-            
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
     running_loss /= num_batches
-    
     return running_loss
 
 # Define the test function
-# def test(dataloader, model, loss_fn):
-#     '''
-#     This function implements the validation/test loop. It iterates over the test
-#     dataset to check if the model performance is improving.
-#     '''
-#     size = len(dataloader.dataset)
-#     num_batches = len(dataloader)
-#     model.eval() # Set the model to evaluation mode
-#     test_loss, correct = 0, 0
-#     with torch.no_grad(): # Do not track gradients while evaluating (faster)
-#         for X, y in dataloader:
-#             pred = model(X)
-#             test_loss += loss_fn(pred, y).item() # Compute CE loss on the batch
-#             correct += (pred.argmax(1) == y).type(torch.float).sum().item() # Compute classification error
-#     test_loss /= num_batches
-#     correct /= size
-#     print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
-#     return test_loss
-
-def test(dataloader, model, loss_fn):
-    '''
-    This function implements the validation/test loop. It iterates over the test
-    dataset to check if the model performance is improving.
-    '''
+def test(dataloader, model, loss_fn, best_loss):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
-    model.eval() # Set the model to evaluation mode
+    model.eval()  # Set the model to evaluation mode
     test_loss = 0
     correct = 0
-    with torch.no_grad(): # Do not track gradients while evaluating (faster)
+    
+    with torch.no_grad():  # Do not track gradients while evaluating (faster)
         for X, y in dataloader:
+            X, y = X.to(device), y.to(device)
             # Forward pass
             pred = model(X)
             pred = pred.squeeze(1)
-            #print(pred,y)
             # Compute loss
             batch_loss = loss_fn(pred, y)
             test_loss += batch_loss.item()
@@ -121,76 +93,108 @@ def test(dataloader, model, loss_fn):
     # Average loss over all batches
     test_loss /= num_batches
     correct /= size
-    # Print test loss
-    
+
+    # Save the model if the test loss is the lowest
+    if test_loss <= best_loss:
+        best_loss = test_loss
+        torch.save(model.state_dict(), './best_model.pth')
+        print(f'Saving model with validation loss {best_loss:.4f}')
+
     print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
 
-    return test_loss
+    return test_loss, best_loss
+
+
+# Grid search function
+def grid_search(hyperparameters, train_main_dataloader, test_main_dataloader):
+    results = []
+    best_loss = float('inf')
+    best_params = None
+
+    for params in hyperparameters:
+        epochs = params['epochs']
+        batch_size = params['batch_size']
+        learning_rate = params['learning_rate']
+
+        print(f"Training with params: epochs={epochs}, batch_size={batch_size}, learning_rate={learning_rate}")
+
+        cnn_model = nn.Sequential( 
+            nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=3, stride=2),
+            nn.Conv2d(64, 192, kernel_size=5, padding=2),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=3, stride=2),
+            nn.Conv2d(192, 384, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(384, 256, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(256, 256, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=3, stride=2),
+            nn.Flatten(),
+            nn.Linear(73984, 4096),  # 256 * 6 * 6
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5),
+            nn.Linear(4096, 4096),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5),
+            nn.Linear(4096, 1)
+        ).to(device)
+
+        loss_fn = nn.MSELoss()
+        optimizer = Adam(cnn_model.parameters(), lr=learning_rate)
+
+        for epoch in range(epochs):
+            print(f"Epoch {epoch+1}/{epochs}")
+            train_loss = train(train_main_dataloader, cnn_model, loss_fn, optimizer)
+            test_loss, best_loss = test(test_main_dataloader, cnn_model, loss_fn, best_loss)
+
+        results.append({
+            'params': params,
+            'best_loss': best_loss
+        })
+
+        if best_loss < best_loss:
+            best_params = params
+            best_loss = test_loss
+
+    return best_params, results
 
 
 if __name__ == "__main__":
     
     # Load the data from the h5py file
-    h5file = '../../docs/data/PepNet_data.h5'
+    h5file = '../../docs/data/Augmented_PepNet_data.h5'
 
     with h5py.File(h5file, 'r') as F:
-        #print(type(F['images'][0]))
         images = np.array(F['images'])
-        #print(type(images[0]))
         labels = np.array(F['permeability'])
 
-    #Verify the data
-    # Verify the data
-    #plt.imshow(images[0])
-    #plt.show()
-    #print(labels[0])
-    
-    
-    # create numpy arrays for labels and data
+    # Create numpy arrays for labels and data
     data = torch.from_numpy(images)
     print(data.shape)
     labels = torch.from_numpy(labels)
     print(labels.shape)
 
-    # Compute the mean and std of the labels
-    #labels_mean = torch.mean(labels)
-    #labels_std = torch.std(labels)
-
-    # Standardize the labels
-    #labels = (labels - labels_mean) / labels_std
-    
-
-    # we change the data type and permute the color channel axis from place 3 to 1, to conform with pytorch defaults.
-    data = data.type(torch.float32).permute(0,3,1,2)  # leave this as is
-    labels = labels.type(torch.float32)            # leave this as is
+    # Change the data type and permute the color channel axis
+    data = data.type(torch.float32).permute(0, 3, 1, 2)  # leave this as is
+    labels = labels.type(torch.float32)  # leave this as is
     print(data.shape, labels.shape)
-
-    # continue with computing the channel means and std's after cropping on a subset of the data
-
-    # Compute mean and std from a random crop
-    random_crop_transform = transforms.RandomCrop(size=(300, 300))
 
     # Select a random subset of images for computing mean and std
     subset_indices = torch.randint(0, len(data), (1000,))
     subset_images = data[subset_indices]
 
-    # Apply random crop to the subset
-    subset_cropped_images = random_crop_transform(subset_images)
-
-    # Compute mean and std for each channel
-    mean = torch.mean(subset_cropped_images.float(), dim=(0, 2, 3))
-    std = torch.std(subset_cropped_images.float(), dim=(0, 2, 3))
-    #mean = torch.mean(subset_images.float(), dim=(0, 2, 3))
-    #std = torch.std(subset_images.float(), dim=(0, 2, 3))
+    # Compute mean and std from the entire dataset
+    mean = torch.mean(subset_images .float(), dim=(0, 2, 3))
+    std = torch.std(subset_images.float(), dim=(0, 2, 3))
 
     print("Computed Mean:", mean)
     print("Computed Std:", std)
 
-
-    # define the composed transform
+    # Define the composed transform without cropping
     composed_transform = transforms.Compose([
-        #transforms.RandomCrop(size=(48, 48)),
-        transforms.RandomCrop(size=(300, 300)),
         transforms.Normalize(mean=mean.tolist(), std=std.tolist())
     ])
 
@@ -203,192 +207,135 @@ if __name__ == "__main__":
     print("Transformed Std:", torch.std(Test_Normalization_data.float(), dim=(0, 2, 3)))
 
     # Split the data into training and test sets
-    train_main_idx, test_main_idx = train_test_split(np.arange(labels.shape[0]), train_size=5000)
+    train_main_idx, test_main_idx = train_test_split(np.arange(labels.shape[0]), train_size=13000)
     train_main_images, train_main_labels, test_main_images, test_main_labels = data[train_main_idx], labels[train_main_idx], data[test_main_idx], labels[test_main_idx]
 
     # Create the datasets 
     Train_main_dataset = MyDataset(train_main_images, train_main_labels, transform=composed_transform)
-    Test_main_dataset = MyDataset(test_main_images,test_main_labels, transform=composed_transform)
+    Test_main_dataset = MyDataset(test_main_images, test_main_labels, transform=composed_transform)
 
-    # Create data loaders with batch size 64
-    batch_size = 64
+    
+    # Define hyperparameters for grid search
+    hyperparameters = [
+        {'epochs': 20, 'batch_size': 32, 'learning_rate': 1e-3},
+        {'epochs': 20, 'batch_size': 64, 'learning_rate': 1e-3},
+        {'epochs': 30, 'batch_size': 32, 'learning_rate': 1e-4},
+        {'epochs': 30, 'batch_size': 64, 'learning_rate': 1e-4}
+    ]
 
-    # Create data loaders for the main data set.
-    train_main_dataloader = DataLoader(Train_main_dataset, batch_size=batch_size, shuffle=True)
-    test_main_dataloader = DataLoader(Test_main_dataset, batch_size=batch_size)
-
-    # Create the First draft of the model
-    #cnn_model = nn.Sequential(
-    #nn.Conv2d(3, 6, kernel_size=5),    # Input: 300x300 -> Output: 296x296
-    #nn.ReLU(),
-    #nn.MaxPool2d(2, 2),               # Output: 296x296 -> 148x148
-
-    #nn.Conv2d(6, 16, kernel_size=5),   # Output: 148x148 -> 144x144
-    #nn.ReLU(),
-    #nn.MaxPool2d(2, 2),               # Output: 144x144 -> 72x72
-
-    #nn.Flatten(),                     # Flatten: 16*72*72 = 82944
-
-    #nn.Linear(16*72*72, 120),         # 16*72*72 = 82944
-    #nn.ReLU(),
-    #nn.Linear(120, 84),
-    #nn.ReLU(),
-    #nn.Linear(84, 1)                  # Single output for regression
-    #)
-
-    #cnn_model = nn.Sequential(
-    #nn.Conv2d(3, 32, kernel_size=3, padding=1),  # Output: 300x300 -> 300x300
-    #nn.BatchNorm2d(32),
-    #nn.ReLU(),
-    #nn.MaxPool2d(2, 2),                         # Output: 300x300 -> 150x150
-
-    #nn.BatchNorm2d(64),
-    #nn.Conv2d(32, 64, kernel_size=3, padding=1), # Output: 150x150 -> 150x150
-    #nn.ReLU(),
-    #nn.MaxPool2d(2, 2),                         # Output: 150x150 -> 75x75
-
-    #nn.Conv2d(64, 128, kernel_size=3, padding=1), # Output: 75x75 -> 75x75
-    #nn.BatchNorm2d(128),
-    #nn.ReLU(),
-    #nn.MaxPool2d(2, 2),                          # Output: 75x75 -> 37x37
-
-    #nn.Conv2d(128, 256, kernel_size=3, padding=1), # Output: 37x37 -> 37x37
-    #nn.BatchNorm2d(256),
-    #nn.ReLU(),
-    #nn.MaxPool2d(2, 2),                          # Output: 37x37 -> 18x18
-
-    #nn.Flatten(),                                # Flatten: 256*18*18 = 82944
-
-    #nn.Linear(256*18*18, 512),
-    #nn.BatchNorm1d(512),
-    #nn.ReLU(),
-    #nn.Dropout(0.5),
-
-    #nn.Linear(512, 256),
-    #nn.BatchNorm1d(256),
-    #nn.ReLU(),
-    #nn.Dropout(0.5),
-
-    #nn.Linear(256, 84),
-    #nn.BatchNorm1d(84),
-    #nn.ReLU(),
-    #nn.Dropout(0.5),
-
-    #nn.Linear(84, 1)                             # Single output for regression
-    #)
-   
+    # Define the architecture (AlexNet)
     cnn_model = nn.Sequential( 
-    nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3),
-    nn.ReLU(inplace=True),
-    nn.MaxPool2d(kernel_size=3, stride=2),
-    nn.Conv2d(64, 192, kernel_size=5, padding=2),
-    nn.ReLU(inplace=True),
-    nn.MaxPool2d(kernel_size=3, stride=2),
-    nn.Conv2d(192, 384, kernel_size=3, padding=1),
-    nn.ReLU(inplace=True),
-    nn.Conv2d(384, 256, kernel_size=3, padding=1),
-    nn.ReLU(inplace=True),
-    nn.Conv2d(256, 256, kernel_size=3, padding=1),
-    nn.ReLU(inplace=True),
-    nn.MaxPool2d(kernel_size=3, stride=2),
+        nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3),
+        nn.ReLU(inplace=True),
+        nn.MaxPool2d(kernel_size=3, stride=2),
+        nn.Conv2d(64, 192, kernel_size=5, padding=2),
+        nn.ReLU(inplace=True),
+        nn.MaxPool2d(kernel_size=3, stride=2),
+        nn.Conv2d(192, 384, kernel_size=3, padding=1),
+        nn.ReLU(inplace=True),
+        nn.Conv2d(384, 256, kernel_size=3, padding=1),
+        nn.ReLU(inplace=True),
+        nn.Conv2d(256, 256, kernel_size=3, padding=1),
+        nn.ReLU(inplace=True),
+        nn.MaxPool2d(kernel_size=3, stride=2),
+        nn.Flatten(),
+        nn.Linear(73984, 4096),  # 256 * 6 * 6
+        nn.ReLU(inplace=True),
+        nn.Dropout(0.5),
+        nn.Linear(4096, 4096),
+        nn.ReLU(inplace=True),
+        nn.Dropout(0.5),
+        nn.Linear(4096, 1)
+    ).to(device)
 
-    nn.Flatten(),
-    
-    nn.Linear(73984, 4096), #256 * 6 * 6
-    nn.ReLU(inplace=True),
-    nn.Dropout(0.5),
-    nn.Linear(4096, 4096),
-    nn.ReLU(inplace=True),
-    nn.Dropout(0.5),
-    nn.Linear(4096, 1)
-    )
-    # Define the model architecture
-    #cnn_model = nn.Sequential(
-    #nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1),
-    #nn.ReLU(),
-    #nn.MaxPool2d(kernel_size=2, stride=2),
-
-    #nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1),
-    #nn.ReLU(),
-    #nn.MaxPool2d(kernel_size=2, stride=2),
-
-    #nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
-    #nn.ReLU(),
-    #nn.MaxPool2d(kernel_size=2, stride=2),
-
-    #nn.Flatten(),
-
-    #nn.Linear(64*6*6, 256),
-    #nn.ReLU(),
-    #nn.Dropout(0.5),
-
-    #nn.Linear(256, 128),
-    #nn.ReLU(),
-    #nn.Dropout(0.5),
-
-    #nn.Linear(128, 64),
-    #nn.ReLU(),
-
-    #nn.Linear(64, 32),
-    #nn.ReLU(),
-    #nn.Dropout(0.5),
-
-    #nn.Linear(32, 1)
-    #)
-
-    # Define the loss function and the optimizer
     loss_fn = nn.MSELoss()
-    learning_rate_full = 1e-3
-    optimizer_full_cnn = torch.optim.Adam(cnn_model.parameters(), lr=learning_rate_full) # Pass model parameters to optimizer
+    best_loss = float('inf')
+    best_params = None
+    results_grid_search = []
+    for params in hyperparameters:
 
-    # Train the model
-    Losses_train_convo = []
-    Losses_test_convo = []
-    epochs = 30
-    for t in range(epochs):
-        print(f"Epoch {t+1}\n")
-        Losses_train_convo.append(train(train_main_dataloader, cnn_model, loss_fn, optimizer_full_cnn))
-        Losses_test_convo.append(test(test_main_dataloader, cnn_model, loss_fn))
+        nb_epochs = params['epochs']
+        bs = params['batch_size']
+        lr = params['learning_rate']
 
-    print("Done!")
+        print(f"Training with params: epochs={nb_epochs}, batch_size={bs}, learning_rate={lr}")
 
-    # Plot the train and test losses
-    plt.plot(range(epochs),Losses_train_convo)
+        optimizer_full_cnn = torch.optim.Adam(cnn_model.parameters(), lr) # Pass model parameters to optimizer
+        
+        train_dataloader = DataLoader(Train_main_dataset, batch_size=bs, shuffle=True)
+        test_dataloader = DataLoader(Test_main_dataset, batch_size=bs)
+        # Perform grid search
+        #best_params, results = grid_search(cnn_model, hyperparameters, train_dataloader, test_dataloader)
 
-    plt.plot(range(epochs),Losses_test_convo)
-    plt.legend(["Train Loss","Test Loss"])
-    plt.xlabel("Epochs")
-    plt.ylabel("Loss")
-    plt.title("PepNet: Train and Test Loss as a function of epochs")
-    plt.show()
+        #print(f"Best hyperparameters: {best_params}")
+        #print(f"Results: {results}")
 
-    correct = 0
-    total = 0
-    mse = 0
-    threshold = 0.1 # Threshold for the prediction to be correct
+        # Train the model
+        Losses_train_convo = []
+        Losses_test_convo = []
+        
+        for t in range(nb_epochs):
+            print(f"Epoch {t+1}\n")
+
+            train_loss = train(train_dataloader, cnn_model, loss_fn, optimizer_full_cnn)
+            Losses_train_convo.append(train_loss)
+
+            test_loss, best_loss = test(test_dataloader, cnn_model, loss_fn, best_loss)
+            Losses_test_convo.append(test_loss)
+
+            best_loss = best_loss
+        
+        
+        results_grid_search.append({
+            'params': params,
+            'best_loss': best_loss
+        })
+
+        if best_loss < best_loss:
+            best_params = params
+            #best_loss = test_loss
+
+    print(" Done ! \n Grid search results: ", results_grid_search)
+    print("Best hyperparameters: ", best_params)
+    
+    
+    # Load the best model
+    best_model = cnn_model
+    best_model.load_state_dict(torch.load('./best_model.pth'))
+
+    # Evaluate the model on the test set
+    best_model.eval()
+    true_list = []
+    pred_list = []
+    total_correct = 0
+    total_samples = 0
+    mse =0
     with torch.no_grad():
+        for images, labels in test_dataloader:
+            images, labels = images.to(device), labels.to(device)
+            outputs = best_model(images)
+            outputs = outputs.squeeze(1)
+            true_list.extend(labels.tolist())
+            pred_list.extend(outputs.tolist())
 
-        for data in test_main_dataloader:
-
-            images, labels = data
-            
-            predicted = cnn_model(images)
-            predicted = predicted.squeeze(1)
-            print("Predicted values : ", predicted)
-            print("Actual values : ", labels)
-    
-            total += labels.size(0)
-    
-            for pred_i, y_i in zip(predicted, labels):
-                if torch.abs(pred_i - y_i) < threshold * torch.abs(y_i):
-                    correct += 1
-
-            batch_mse = torch.mean((predicted - labels)**2).item()
+            #Compute the mean squared error
+            batch_mse = torch.mean((outputs - labels)**2).item()
             mse += batch_mse
 
-        mse /= len(test_main_dataloader)
-        accuracy = 100 * correct / total
+            # Compute the number of correct predictions within a threshold of 10% of the true value
+            for output, label in zip(outputs, labels):
+                if torch.abs(output - label) < 0.1 * torch.abs(label):
+                    total_correct += 1
+            total_samples += labels.size(0)
 
-    #print(f'Test accuracy: {100 * correct / total}')
-    print(f'Mean Squared Error (MSE): {mse:.6f}')
-    print(f'Accuracy within {threshold * 100}% error: {accuracy:.2f}%')
+    # Compute the mean squared error
+    mse /= len(test_dataloader)
+
+    # Compute the accuracy
+    accuracy = total_correct / total_samples * 100
+    print(f"Test accuracy: {accuracy:.2f}%")
+
+    # Save the predictions to a csv file
+    df = pd.DataFrame({"True Values": true_list, "Predicted Values": pred_list})
+    df.to_csv("predictions.csv", index=False)
+    print("Predictions saved to predictions.csv")
