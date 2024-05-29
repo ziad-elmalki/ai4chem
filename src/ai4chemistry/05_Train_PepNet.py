@@ -139,7 +139,7 @@ def test(dataloader, model, loss_fn, best_loss, params):
     if test_loss <= best_loss:
         best_loss = test_loss
         best_params = params
-        torch.save(model.state_dict(), '../../Results/Models/Test_PepNet.pth') 
+        torch.save(model.state_dict(), '../../Results/Models/PepNet.pth') 
         print(f'Saving model with validation loss {best_loss:.4f}')
         
 
@@ -151,7 +151,7 @@ def test(dataloader, model, loss_fn, best_loss, params):
 if __name__ == "__main__":
     
     # Load the data from the h5py file
-    h5file = '../../docs/data/PepNet_data.h5'
+    h5file = '../../docs/data/Augmented_PepNet_data.h5'
 
     with h5py.File(h5file, 'r') as F:
         images = np.array(F['images'])
@@ -191,7 +191,7 @@ if __name__ == "__main__":
     print("Transformed Std:", torch.std(Test_Normalization_data.float(), dim=(0, 2, 3)))
 
     # Split the data into training and test sets
-    train_idx, test_idx = train_test_split(np.arange(labels.shape[0]), train_size=6000)
+    train_idx, test_idx = train_test_split(np.arange(labels.shape[0]), train_size=13000)
     train_images, train_labels, test_images, test_labels = data[train_idx], labels[train_idx], data[test_idx], labels[test_idx]
 
     # Create the datasets 
@@ -201,135 +201,70 @@ if __name__ == "__main__":
     
     # Define hyperparameters for the tuning 
     hyperparameters = [
-        #{'epochs': 20, 'batch_size': 32, 'learning_rate': 1e-3},
-        #{'epochs': 30, 'batch_size': 32, 'learning_rate': 1e-4},
-        #{'epochs': 30, 'batch_size': 64, 'learning_rate': 1e-3},
-        #{'epochs': 30, 'batch_size': 64, 'learning_rate': 1e-4},
-        #{'epochs': 40, 'batch_size': 32, 'learning_rate': 1e-3},
-        #{'epochs': 40, 'batch_size': 64, 'learning_rate': 1e-3},
+        
+        {'epochs': 30, 'batch_size': 32, 'learning_rate': 1e-4},
+        {'epochs': 30, 'batch_size': 32, 'learning_rate': 1e-3},
+        {'epochs': 30, 'batch_size': 64, 'learning_rate': 1e-3},
+        {'epochs': 30, 'batch_size': 64, 'learning_rate': 1e-4},
+
+        {'epochs': 50, 'batch_size': 32, 'learning_rate': 1e-4},
+        {'epochs': 50, 'batch_size': 32, 'learning_rate': 1e-3},
+        {'epochs': 50, 'batch_size': 64, 'learning_rate': 1e-3},
+        {'epochs': 50, 'batch_size': 64, 'learning_rate': 1e-4},
+
+        {'epochs': 80, 'batch_size': 32, 'learning_rate': 1e-4},
+        {'epochs': 80, 'batch_size': 32, 'learning_rate': 1e-3},
+        {'epochs': 80, 'batch_size': 64, 'learning_rate': 1e-3},
         {'epochs': 80, 'batch_size': 64, 'learning_rate': 1e-4},
-        #{'epochs': 120, 'batch_size': 64, 'learning_rate': 1e-4}
+
+        {'epochs': 100, 'batch_size': 32, 'learning_rate': 1e-3},
     ]
 
-    # Define the architecture (AlexNet)
-    # cnn_model = nn.Sequential( 
-    #     nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3),
-    #     nn.ReLU(inplace=True),
-    #     nn.MaxPool2d(kernel_size=3, stride=2),
-    #     nn.Conv2d(64, 192, kernel_size=5, padding=2),
-    #     nn.ReLU(inplace=True),
-    #     nn.MaxPool2d(kernel_size=3, stride=2),
-    #     nn.Conv2d(192, 384, kernel_size=3, padding=1),
-    #     nn.ReLU(inplace=True),
-    #     nn.Conv2d(384, 256, kernel_size=3, padding=1),
-    #     nn.ReLU(inplace=True),
-    #     nn.Conv2d(256, 256, kernel_size=3, padding=1),
-    #     nn.ReLU(inplace=True),
-    #     nn.MaxPool2d(kernel_size=3, stride=2),
-    #     nn.Flatten(),
-    #     nn.Linear(73984, 4096),  # 256 * 6 * 6
-    #     nn.ReLU(inplace=True),
-    #     nn.Dropout(0.5),
-    #     nn.Linear(4096, 4096),
-    #     nn.ReLU(inplace=True),
-    #     nn.Dropout(0.5),
-    #     nn.Linear(4096, 1)
-    # ).to(device)
-
-    # #Define the model architecture (Small PepNet)
-    # #Create the First draft of the model smaller than AlexNet
-    # cnn_model = nn.Sequential(
-    # nn.Conv2d(3, 6, kernel_size=5),         # Input: 300x300 -> Output: 296x296
-    # nn.ReLU(),
-    # nn.MaxPool2d(2, 2),                    # Output: 296x296 -> 148x148
-
-    # nn.Conv2d(6, 16, kernel_size=5),        # Output: 148x148 -> 144x144
-    # nn.ReLU(),
-    # nn.MaxPool2d(2, 2),                    # Output: 144x144 -> 72x72
-
-    # nn.Flatten(),                          # Flatten: 16*72*72 = 82944
-
-    # nn.Linear(16*72*72, 120),              # 16*72*72 = 82944
-    # nn.ReLU(),
-    # nn.Linear(120, 84),
-    # nn.ReLU(),
-    # nn.Linear(84, 1)                      # Single output for regression
-    # ).to(device)               
-
-    
-
-    # Define the model architecture (Large PepNet)
-    # cnn_model = nn.Sequential(
-    # nn.Conv2d(3, 32, kernel_size=3, padding=1),  # Output: 300x300 -> 300x300
-    # nn.BatchNorm2d(32),
-    # nn.ReLU(),
-    # nn.MaxPool2d(2, 2),                         # Output: 300x300 -> 150x150
-
-    # nn.Conv2d(32, 64, kernel_size=3, padding=1), # Output: 150x150 -> 150x150
-    # nn.BatchNorm2d(64),
-    # nn.ReLU(),
-    # nn.MaxPool2d(2, 2),                         # Output: 150x150 -> 75x75
-
-    # nn.Conv2d(64, 128, kernel_size=3, padding=1),# Output: 75x75 -> 75x75
-    # nn.BatchNorm2d(128),
-    # nn.ReLU(),
-    # nn.MaxPool2d(2, 2),                         # Output: 75x75 -> 37x37
-
-    # nn.Conv2d(128, 256, kernel_size=3, padding=1),# Output: 37x37 -> 37x37
-    # nn.BatchNorm2d(256),
-    # nn.ReLU(),
-    # nn.MaxPool2d(2, 2),                         # Output: 37x37 -> 18x18
-
-    # nn.Flatten(),                               # Flatten: 256*18*18 = 82944
-
-    # nn.Linear(256*18*18, 512),
-    # nn.BatchNorm1d(512),
-    # nn.ReLU(),
-    # nn.Dropout(0.5),
-
-    # nn.Linear(512, 256),
-    # nn.BatchNorm1d(256),
-    # nn.ReLU(),
-    # nn.Dropout(0.5),
-
-    # nn.Linear(256, 84),
-    # nn.BatchNorm1d(84),
-    # nn.ReLU(),
-    # nn.Dropout(0.5),
-
-    # nn.Linear(84, 1)    # Single output for regression
-    # ).to(device)
-
+    # Define the model architecture 
     cnn_model = nn.Sequential(
-        nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1), 
-        nn.ReLU(),
-        nn.MaxPool2d(kernel_size=2, stride=2),
+    nn.Conv2d(3, 32, kernel_size=3, padding=1),  
+    nn.BatchNorm2d(32),
+    nn.ReLU(),
+    nn.MaxPool2d(2, 2),                         
 
-        nn.Conv2d (16, 32, kernel_size=3, stride=1, padding=1),
-        nn.ReLU(),
-        nn.MaxPool2d(kernel_size=2, stride=2),
+    nn.Conv2d(32, 64, kernel_size=3, padding=1), 
+    nn.BatchNorm2d(64),
+    nn.ReLU(),
+    nn.MaxPool2d(2, 2),                         
 
-        nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1), 
-        nn.ReLU(),
-        nn.MaxPool2d(kernel_size=2, stride=2),
-        
-        nn.Flatten(),
-        
-        nn.Linear(87616, 256),
-        nn.ReLU(),
-        nn.Dropout(0.5),
-        
-        nn.Linear(256, 128), 
-        nn.ReLU(),
-        nn.Dropout(0.5),
+    nn.Conv2d(64, 128, kernel_size=3, padding=1),
+    nn.BatchNorm2d(128),
+    nn.ReLU(),
+    nn.MaxPool2d(2, 2),                         
 
-        nn.Linear(128, 1)
-    ).to(device)   
+    nn.Conv2d(128, 256, kernel_size=3, padding=1),
+    nn.BatchNorm2d(256),
+    nn.ReLU(),
+    nn.MaxPool2d(2, 2),                         
+
+    nn.Flatten(),                               
+
+    nn.Linear(256*18*18, 512),
+    nn.BatchNorm1d(512),
+    nn.ReLU(),
+    nn.Dropout(0.5),
+
+    nn.Linear(512, 256),
+    nn.BatchNorm1d(256),
+    nn.ReLU(),
+    nn.Dropout(0.5),
+
+    nn.Linear(256, 84),
+    nn.BatchNorm1d(84),
+    nn.ReLU(),
+    nn.Dropout(0.5),
+
+    nn.Linear(84, 1)    # Single output for regression
+    ).to(device)
 
 
     loss_fn = nn.MSELoss()
     best_loss = float('inf')
-    #best_params = None
     results_grid_search = []
     for params in hyperparameters:
 
@@ -359,17 +294,11 @@ if __name__ == "__main__":
             #params = best_params
             best_loss = best_loss
             
-        
-        
         results_grid_search.append({
             'params': params,
             'best_loss': best_loss
         })
 
-        #if best_loss < best_loss:
-            #best_params = params
-            #best_loss = test_loss
-        
         # Plot the train and test losses
         plt.figure()
         plt.plot(range(nb_epochs-1),Losses_train_convo[1:])
@@ -379,7 +308,7 @@ if __name__ == "__main__":
         plt.ylabel("Loss")
         #plt.ylim(0, 1)
         plt.title("PepNet: Train and Validation Loss as a function of epochs")
-        plt.savefig(f"../../Results/Plots/Test_PepNet_Losses_{params}.png")
+        plt.savefig(f"../../Results/Plots/PepNet_Losses_{params}.png")
 
     print(" Done ! \n Grid search results: ", results_grid_search)
     print("Best hyperparameters: ", best_params)
@@ -387,7 +316,7 @@ if __name__ == "__main__":
     
     # Load the best model
     best_model = cnn_model
-    best_model.load_state_dict(torch.load('../../Results/Models/Test_PepNet.pth')) 
+    best_model.load_state_dict(torch.load('../../Results/Models/PepNet.pth')) 
 
     # Evaluate the model on the test set
     best_model.eval()
@@ -396,6 +325,7 @@ if __name__ == "__main__":
     total_correct = 0
     total_samples = 0
     mse =0
+    threshold = 0.15
     with torch.no_grad():
         for images, labels in test_dataloader:
             images, labels = images.to(device), labels.to(device)
@@ -410,7 +340,7 @@ if __name__ == "__main__":
 
             # Compute the number of correct predictions within a threshold of 20% of the true value
             for output, label in zip(outputs, labels):
-                if torch.abs(output - label) < 0.15 * torch.abs(label):
+                if torch.abs(output - label) < threshold * torch.abs(label):
                     total_correct += 1
             total_samples += labels.size(0)
 
@@ -423,11 +353,11 @@ if __name__ == "__main__":
 
     # Save the predictions to a csv file
     df = pd.DataFrame({"True Values": true_list, "Predicted Values": pred_list})
-    df.to_csv("../../Results/predictions_Test_PepNet.csv", index=False)
+    df.to_csv("../../Results/predictions_PepNet.csv", index=False)
 
     # Save the accuracy and mse to a text file
-    with open("../../Results/metrics_Test_PepNet.txt", "w") as f:
+    with open("../../Results/metrics_PepNet.txt", "w") as f:
         f.write(f"Test accuracy: {accuracy:.2f}%\n")
         f.write(f"Mean Squared Error: {mse:.4f}\n")
     
-    print("Predictions saved to predictions.csv", "Metrics saved to metrics.txt")
+    print("Predictions saved to Results/predictions_PepNet.csv", "Metrics saved to Results/metrics_PepNet.txt")
