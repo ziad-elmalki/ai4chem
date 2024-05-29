@@ -1,0 +1,1 @@
+{'test_loss': 0.5153599381446838, 'test_mean_squared_error': 0.5153599381446838, 'test_runtime': 3.9609, 'test_samples_per_second': 252.466, 'test_steps_per_second': 63.116}
