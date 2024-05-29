@@ -66,6 +66,39 @@ The most recent code and data can be installed directly from GitHub with:
 pip install git+https://github.com/EPFL/ai4chem.git
 ```
 
+### To download the data:
+On linux:
+```shell
+conda env create pepnet_linux.yml
+```
+On Ios:
+```shell
+conda env create pepnet_ios.yml
+```
+
+Then:
+```shell
+conda activate pepnet
+
+python CycPept_Download.py
+python CycPept_Cleaning.py
+```
+### To run the PepNet CNN:
+```shell
+python PepNet_DataGenerator.py
+python PepNet.py
+```
+
+### To run the ridge reg:
+```shell
+conda env create -f map4.yml
+conda activate map4
+python Fingerprints.ipynb
+
+conda activate pepnet
+python Baseline_model.py
+```
+
 ## 👐 Contributing
 
 Contributions, whether filing an issue, making a pull request, or forking, are appreciated. See
