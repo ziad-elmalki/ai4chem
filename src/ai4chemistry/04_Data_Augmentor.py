@@ -1,3 +1,5 @@
+'This script performs data augmentation on the PepNet dataset and saves the augmented data to a new HDF5 file.'
+
 import h5py
 import torch
 from torchvision import transforms
@@ -11,7 +13,6 @@ data_transforms = transforms.Compose([
     transforms.RandomVerticalFlip(),         # Randomly flip the image vertically
     transforms.RandomRotation(degrees=15),   # Randomly rotate the image by a maximum of 15 degrees
     transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),  # Randomly adjust brightness, contrast, saturation, and hue
-    #transforms.ToTensor(),                   # Convert PIL Image to tensor
 ])
 
 # Path to the HDF5 file

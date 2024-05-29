@@ -1,3 +1,5 @@
+'This is a script to download the CycPeptDB database from the CycPeptMPDB website.'
+
 import os
 import urllib.request
 

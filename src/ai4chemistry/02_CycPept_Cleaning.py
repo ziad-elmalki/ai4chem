@@ -1,3 +1,5 @@
+'This is a script to clean the CycPeptDB database file.'
+
 import pandas as pd
 from tqdm import tqdm
 from pandarallel import pandarallel

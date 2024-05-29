@@ -1,3 +1,5 @@
+'This is a script to generate the PepNet dataset from the CycPeptDB database file.'
+
 import numpy as np 
 import pandas as pd
 from rdkit import Chem
