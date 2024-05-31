@@ -79,20 +79,29 @@ Then:
 ```shell
 conda activate pepnet
 
-python CycPept_Download.py
-python CycPept_Cleaning.py
+python3 01_CycPept_Download.py
+python3 02_CycPept_Cleaning.py
+```
+### 1) To train the Gradient Boosting Regression:
+```shell
+conda activate pepnet
+python3 07_Baseline.py
 ```
 ### 2) To train the PepNet CNN:
 ```shell
-python PepNet_DataGenerator.py
-python PepNet.py
+python3 03_PepNet_DataGenerator.py
+python3 04_Data_Augmentor.py
+python3 05_Train_PepNet.py
 ```
-
-### 3) To train the Gradient Boosting Regression:
+### 3) To Fine-tune Google's ViT:
 ```shell
-conda activate pepnet
-python Baseline_model.py
+python3 03_PepNet_DataGenerator.py
+python3 04_Data_Augmentor.py
+python3 06_ViT_Tuning.py
 ```
+or you can use the notebook 02_ViT_Tuning.ipynb in src/ai4chemistry/Notebooks/
+
+
 
 ## 👐 Contributing
 
