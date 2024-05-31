@@ -1,6 +1,6 @@
 <!--
 <p align="center">
-  <img src="https://github.com/EPFL/ai4chem/raw/main/docs/source/logo.png" height="150">
+  <img src="https://github.com/ziad-elmalki/ai4chem/raw/main/docs/source/logo.png" height="150">
 </p>
 -->
 
@@ -9,32 +9,31 @@
 </h1>
 
 <p align="center">
-    <a href="https://github.com/EPFL/ai4chem/actions/workflows/tests.yml">
-        <img alt="Tests" src="https://github.com/EPFL/ai4chem/actions/workflows/tests.yml/badge.svg" /></a>
+    <a href="https://github.com/ziad-elmalki/ai4chem/actions/workflows/tests.yml">
+        <img alt="Tests" src="https://github.com/ziad-elmalki/ai4chem/actions/workflows/tests.yml/badge.svg" /></a>
     <a href="https://pypi.org/project/ai4chemistry">
         <img alt="PyPI" src="https://img.shields.io/pypi/v/ai4chemistry" /></a>
     <a href="https://pypi.org/project/ai4chemistry">
         <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/ai4chemistry" /></a>
-    <a href="https://github.com/EPFL/ai4chem/blob/main/LICENSE">
+    <a href="https://github.com/ziad-elmalki/ai4chem/blob/main/LICENSE">
         <img alt="PyPI - License" src="https://img.shields.io/pypi/l/ai4chemistry" /></a>
     <a href='https://ai4chemistry.readthedocs.io/en/latest/?badge=latest'>
         <img src='https://readthedocs.org/projects/ai4chemistry/badge/?version=latest' alt='Documentation Status' /></a>
-    <a href="https://codecov.io/gh/EPFL/ai4chem/branch/main">
-        <img src="https://codecov.io/gh/EPFL/ai4chem/branch/main/graph/badge.svg" alt="Codecov status" /></a>  
+    <a href="https://codecov.io/gh/ziad-elmalki/ai4chem/branch/main">
+        <img src="https://codecov.io/gh/ziad-elmalki/ai4chem/branch/main/graph/badge.svg" alt="Codecov status" /></a>  
     <a href="https://github.com/cthoyt/cookiecutter-python-package">
         <img alt="Cookiecutter template from @cthoyt" src="https://img.shields.io/badge/Cookiecutter-snekpack-blue" /></a>
     <a href='https://github.com/psf/black'>
         <img src='https://img.shields.io/badge/code%20style-black-000000.svg' alt='Code style: black' /></a>
-    <a href="https://github.com/EPFL/ai4chem/blob/main/.github/CODE_OF_CONDUCT.md">
+    <a href="https://github.com/ziad-elmalki/ai4chem/blob/main/.github/CODE_OF_CONDUCT.md">
         <img src="https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg" alt="Contributor Covenant"/></a>
 </p>
 
-This is a repo for the Artificial Intelligence for Chemistry class. 
+
 
 ## 💪 Getting Started
 
-> TODO show in a very small amount of space the **MOST** useful thing your package can do.
-> Make it as short as possible! You have an entire set of docs for later.
+> This repo allows for the training of an XGBoost model, Fine-tunign Google's ViT and the training of PepNet, a convolutinal network, for the prediction of cell permeability of cylic peptides
 
 
 ### Command Line Interface
@@ -63,7 +62,7 @@ pip install ai4chemistry
 The most recent code and data can be installed directly from GitHub with:
 
 ```shell
-pip install git+https://github.com/EPFL/ai4chem.git
+pip install git+https://github.com/ziad-elmalki/ai4chem.git
 ```
 
 ### To download the data:
@@ -102,7 +101,7 @@ python Baseline_model.py
 ## 👐 Contributing
 
 Contributions, whether filing an issue, making a pull request, or forking, are appreciated. See
-[CONTRIBUTING.md](https://github.com/EPFL/ai4chem/blob/master/.github/CONTRIBUTING.md) for more information on getting involved.
+[CONTRIBUTING.md](https://github.com/ziad-elmalki/ai4chem/blob/master/.github/CONTRIBUTING.md) for more information on getting involved.
 
 ## 👋 Attribution
 
@@ -153,7 +152,7 @@ The final section of the README is for if you want to get involved by making a c
 To install in development mode, use the following:
 
 ```bash
-git clone git+https://github.com/EPFL/ai4chem.git
+git clone git+https://github.com/ziad-elmalki/ai4chem.git
 cd ai4chem
 pip install -e .
 ```
@@ -168,14 +167,14 @@ tox
 ```
 
 Additionally, these tests are automatically re-run with each commit in a
-[GitHub Action](https://github.com/EPFL/ai4chem/actions?query=workflow%3ATests).
+[GitHub Action](https://github.com/ziad-elmalki/ai4chem/actions?query=workflow%3ATests).
 
 ### 📖 Building the Documentation
 
 The documentation can be built locally using the following:
 
 ```shell
-git clone git+https://github.com/EPFL/ai4chem.git
+git clone git+https://github.com/ziad-elmalki/ai4chem.git
 cd ai4chem
 tox -e docs
 open docs/build/html/index.html
