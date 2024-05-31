@@ -8,7 +8,7 @@ from sklearn.preprocessing import StandardScaler
 import os
 
 # Import data
-df = pd.read_csv('../../../../docs/data/cycpeptdb_clean.csv', header=0)
+df = pd.read_csv('../../docs/data/cycpeptdb_clean.csv', header=0)
 filtered_df = df[df['Permeability'] != -10]
 
 # Select the desired columns
