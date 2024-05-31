@@ -65,14 +65,14 @@ The most recent code and data can be installed directly from GitHub with:
 pip install git+https://github.com/ziad-elmalki/ai4chem.git
 ```
 
-### To download the data:
+### 1) To download the data:
 On linux:
 ```shell
 conda env create pepnet_linux.yml
 ```
-On Ios:
+On MacOS:
 ```shell
-conda env create pepnet_ios.yml
+conda env create pepnet_macos.yml
 ```
 
 Then:
@@ -82,18 +82,14 @@ conda activate pepnet
 python CycPept_Download.py
 python CycPept_Cleaning.py
 ```
-### To run the PepNet CNN:
+### 2) To train the PepNet CNN:
 ```shell
 python PepNet_DataGenerator.py
 python PepNet.py
 ```
 
-### To run the ridge reg:
+### 3) To train the Gradient Boosting Regression:
 ```shell
-conda env create -f map4.yml
-conda activate map4
-python Fingerprints.ipynb
-
 conda activate pepnet
 python Baseline_model.py
 ```
